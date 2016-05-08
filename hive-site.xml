@@ -1,0 +1,17 @@
+<configuration>
+  <property>
+    <name>hive.server2.enable.doAs</name>
+    <value>false</value>
+    <description>Needed to connect from ruby to hive server</description>
+  </property>
+  <property>
+     <name>hive.exec.scratchdir</name>
+     <value>/tmp</value>
+     <description>Scratch space for Hive jobs</description>
+  </property>
+  <property>
+    <name>mapred.child.java.opts</name>
+    <value>-Xmx4G -XX:+UseConcMarkSweepGC</value>
+    <description>Max memory for Map Reduce Jobs</description>
+  </property>
+</configuration>
