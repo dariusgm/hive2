@@ -6,10 +6,17 @@ RUN apt-get update && \
 
 # Fetch Hadoop and Unpack & Fetch Hive and Unpack
 WORKDIR /usr/local
-RUN wget -qq http://mirror.netcologne.de/apache.org/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz && \
-  tar xf hadoop-2.7.2.tar.gz  && \
-  wget -qq http://mirror.softaculous.com/apache/hive/hive-2.0.0/apache-hive-2.0.0-bin.tar.gz && \
-  tar xf apache-hive-2.0.0-bin.tar.gz
+RUN wget http://mirror.softaculous.com/apache/hadoop/common/hadoop-2.6.4/hadoop-2.6.4.tar.gz
+RUN wget http://mirror.softaculous.com/apache/hive/hive-2.0.0/apache-hive-2.0.0-bin.tar.gz
+RUN wget http://mirror.softaculous.com/apache/spark/spark-1.6.1/spark-1.6.1-bin-hadoop2.6.tgz
+
+RUN tar xf hadoop-2.6.4.tar.gz
+RUN tar xf apache-hive-2.0.0-bin.tar.gz
+RUN tar xf spark-1.6.1-bin-hadoop2.6.tgz
+
+RUN ln -s /usr/local/hadoop-2.6.4 /usr/local/hadoop
+RUN ln -s /usr/local/apache-hive-2.0.0-bin /usr/local/hive
+RUN ln -s /usr/local/spark-1.6.1-bin-hadoop2.6 /usr/local/spark
 
 WORKDIR /usr/local/hadoop-2.7.2/etc/hadoop
 
@@ -26,24 +33,28 @@ ADD yarn-site.xml yarn-site.xml
 # Set Env
 
 ENV HADOOP_HEAPSIZE=8192
-ENV HADOOP_HOME=/usr/local/hadoop-2.7.2
-ENV HIVE_HOME=/usr/local/apache-hive-2.0.0-bin
+ENV HADOOP_HOME=/usr/local/hadoop
+ENV HIVE_HOME=/usr/local/hive
 ENV PATH=$HIVE_HOME:$HADOOP_HOME:$PATH
 ENV JAVA_HOME=/usr/
 
+ENV SPARK_MASTER_IP=0.0.0.0
+ENV SPARK_PUBLIC_DNS=localhost
+ENV SPARK_MASTER_WEBUI_PORT=7088
 
 # Setup SSH
 WORKDIR /root
 RUN mkdir .ssh
 RUN cat /dev/zero | ssh-keygen -q -N "" > /dev/null && cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys
+RUN sed -i -e 's#^#export JAVA_HOME=/usr\n#' /etc/bash.bashrc
 
-ADD hive-site.xml /usr/local/apache-hive-2.0.0-bin/conf/hive-site.xml
+ADD hive-site.xml /usr/local/hive/conf/hive-site.xml
 
 # Format HFS
-RUN /usr/local/hadoop-2.7.2/bin/hdfs namenode -format -nonInteractive
+RUN /usr/local/hadoop/bin/hdfs namenode -format -nonInteractive
 
 # Create Hive Metastore
-RUN /usr/local/apache-hive-2.0.0-bin/bin/schematool -initSchema -dbType derby
+RUN /usr/local/hive/bin/schematool -initSchema -dbType derby
 
 # Hadoop Resource Manager
 EXPOSE 8088
@@ -65,6 +76,8 @@ ENTRYPOINT service ssh start && \
   ssh-keyscan localhost > /root/.ssh/known_hosts && \
   ssh-keyscan ::1 >> /root/.ssh/known_hosts && \
   ssh-keyscan 0.0.0.0 >> /root/.ssh/known_hosts && \
-  /usr/local/hadoop-2.7.2/sbin/start-yarn.sh && \
-  /usr/local/hadoop-2.7.2/sbin/start-dfs.sh && \
-  /usr/local/apache-hive-2.0.0-bin/bin/hive --service hiveserver2
+  /usr/local/hadoop/sbin/start-yarn.sh && \
+  /usr/local/hadoop/sbin/start-dfs.sh && \
+  /usr/local/spark/sbin/start-master.sh && \
+  /usr/local/spark/sbin/start-slave.sh spark://localhost:7077 && \
+  /usr/local/hive/bin/hive --service hiveserver2
