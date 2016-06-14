@@ -71,6 +71,9 @@ EXPOSE 10002
 # Hive Master
 EXPOSE 10000
 
+# Spark Master
+EXPOSE 7077 7088
+
 # Start sshd, allow ssh connection for pseudo distributed mode, yarn, datanode and namenode, hive2 - move this to docker compose.
 ENTRYPOINT service ssh start && \
   ssh-keyscan localhost > /root/.ssh/known_hosts && \
